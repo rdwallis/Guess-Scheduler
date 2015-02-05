@@ -1,102 +1,73 @@
-#Universal Analytics
-A universal analytics implementation and service provider.
+# GWT Guess Scheduler
 
-Thanks to Richard Wallis (https://github.com/rdwallis) for his initial pull request against GWTP (https://github.com/ArcBees/GWTP/pull/521)
-See his repo here https://github.com/rdwallis/gwt-universal-analytics
+### A faster GWT Scheduler
 
-##Install
+This is still under developement and should not yet be used in production.
 
-Add the following to your pom
+### What this does:
+
+This scheduler will run tasks in the incremental scheduler up to 2x (expect this to improve to about 4x) as fast as the default scheduler.  How much speed improvement you see will depend on the task you are running.
+
+### How the gwt incremental scheduler works:
+
+Any GWT incremental scheduler is a trade off between Frames Per Second and Performance.
+
+When you pass a RepeatingCommand to the incremental scheduler it is run for 16ms interval before returning control to the browser.  16ms is used because 1 second / 60 is 16. So 16ms retains frame rate at 60fps.  (Actually you will probably see a drop to ~54 when running any scheduler (I'm investigating this))
+
+To maintain 60 fps, any task passed to the incremental scheduler should be quick to run. (You should aim for all tasks to complete in a fraction of a millisecond.)
+
+### How the guess scheduler speeds things up:
+
+To return control to the browser after 16ms the scheduler must check how much time has passed.
+
+This duration check is expensive and the default sheduler will do it after each run of a task.
+
+**The Guess Scheduler won't do the duration check as often.  Instead it guesses how many times it can run before it needs to return. (It's quite conservative so not as scary as this sounds.)**
+
+### How much faster is it:
+
+Speed is very tied to the task being run, the hardware that the browser is running on and the browser being used.  My intial results are for testing a fibonacci calculation on Chrome on a recent Intel i5 core.
+
+Initial Results are:
+
+| Scheduler             | calculate 999999 fibonacci numbers |
+|-----------------------|------------------------------------|
+| GWT Current Scheduler | avg time: 177ms                    |
+| Guess Scheduler       | avg time: 82ms                     |
+
+Results on other browsers, or other hardware will be different!!
+
+Fibonacci sequence is a bit of a cheat!.  Real world tasks probably won't be sped up as much.
+Tasks that take more than about 0.5ms to run will not speed up at all.
+I haven't tested performance for multiple different tasks yet!
+
+
+### It can be even faster!
+
+There is a lot of room for improvement.  This is very conservative at the moment.  Also the new `performance.now()` api can be used on browsers that support it.  Probably the Guess Scheduler can be made twice as fast.
+
+### Try it out
+
+TODO
+
+### How to use
+
+Please don't use this in production!  This will be released on Sonatype or I'll contribute it to GWT master when it is ready.
+
+If you want to use this anyway:
+
+checkout this project and run:
+`mvn install`
 
 ```
 <dependency>
-	<groupId>com.arcbees.analytics</groupId>
-	<artifactId>universal-analytics</artifactId>
-	<version>2.1</version>
+    <groupId>com.wallissoftware</groupId>
+    <artifactId>guess-scheduler</artifactId>
+    <version>1.0-SNAPSHOT</version>
 </dependency>
 ```
 
-Add the following to your gwt.xml
+** You will not see much improvement in dev ** Because of asserts and other things most of the speed up will only occur with compiled code.
+        
 
-```
-<inherits name="com.arcbees.analytics.Analytics"/>
-```
-
-Then in your gin module:
-```
-install(new AnalyticsModule.Builder("UA-XXXXXXXX-X").build());
-```
-
-##Advanced Install
-
-By default AnalyticsModule.Builder will automatically create a tracker for you.
-
-If you want to set up your tracker manually (eg because you want to use plugins) call:
-
-```
-install(new AnalyticsModule.Builder("UA-XXXXXXXX-X").autoCreate(false).build());
-```
-
-Then in your entry point or bootstrapper(GWTP) call the following:
-
-```
-analytics.create().go();
-analytics.enablePlugin(AnalyticsPlugin.DISPLAY); //Provides demographics information.
-```
-
-##Basic Usage
-
-Inject Analytics into the class you want to track events from.
-
-**REMEBER TO CALL GO()**
-
-Analytics uses a version of the builder pattern where you call the type of tracking method you want, then chain the options you need to the call followed by go().
-
-eg:
-```
-analytics.sendPageView().go(); //track a pageview
-analytics.sendPageView().documentPath("/foo").go(); //track a pageview for page /foo
-analytics.sendEvent("button", "click").eventLabel("my label").go(); //send event with label
-```
-
-If you want to change the global settings call setGlobalSettings in the same way. 
-```
-analytics.setGlobalSettings().anonymizeIp(true).go(); //anonymize ips
-```
-
-##Server Side
-
-
-
-```
-install(new ServerAnalyticsModule("UA-XXXXXX-X"));
-```
-
-You can use analytics on the server exactly the same as you do on the client.
-
-Server side calls work via the [Measurement Protocol](https://developers.google.com/analytics/devguides/collection/protocol/v1/)
-
-A filter will automatically fill out the Measurement Protocol required fields for you from the _ga cookie or create the cookie if it doesn't exist.
-
-`setGlobalOptions()` and `enablePlugin()` have no effect on server calls.
-
-If you're using multiple trackers then you should call `create().trackerName("My Tracker").go()` to create your tracker before making the tracker call.  All other options sent to create() on the server will be ignored.
-
-If you're using SetCookieName() on the client then the automatic filter will not be able to keep the server and client in sync since it assumes that the cookie name is : _ga.  Raise an issue on this project if you need to set the cookie name for some reason.
-
-##Timing Events
-
-To start a timing event call
-```
-analytics.startTimingEvent("My Category", "My Timing Variable Name");
-```
-Then to end it call.
-
-```
-analytics.endTimingEvent("My Category", "My Timing Variable Name").userTimingLabel("My Label").go();
-```
-
-This will automatically create a timing event marking the difference between when the start and end calls are made.
-
-The category and variable names for the start and end calls must be exactly the same, or the call will have no effect.
 
