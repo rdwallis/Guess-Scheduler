@@ -39,7 +39,7 @@ Results on other browsers, or other hardware will be different!!
 
 Fibonacci sequence is a bit of a cheat!.  Real world tasks probably won't be sped up as much.
 Tasks that take more than about 0.5ms to run will not speed up at all.
-I haven't tested performance for multiple different tasks yet!
+I haven't tested performance for multiple simultaneous tasks yet!
 
 
 ### It can be even faster!
