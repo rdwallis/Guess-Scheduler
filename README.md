@@ -67,6 +67,8 @@ checkout this project and run:
     <artifactId>guess-scheduler</artifactId>
     <version>1.0-SNAPSHOT</version>
 </dependency>
+
+<inherits name='com.wallissoftware.guessscheduler.GuessScheduler'/>
 ```
 
 **You will not see much improvement in dev** Because of asserts and other things most of the speed up will only occur with compiled code.
