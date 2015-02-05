@@ -67,7 +67,4 @@ checkout this project and run:
 </dependency>
 ```
 
-** You will not see much improvement in dev ** Because of asserts and other things most of the speed up will only occur with compiled code.
-        
-
-
+**You will not see much improvement in dev** Because of asserts and other things most of the speed up will only occur with compiled code.
