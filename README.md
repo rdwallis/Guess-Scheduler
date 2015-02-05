@@ -26,7 +26,7 @@ This duration check is expensive and the default sheduler will do it after each 
 
 ### How much faster is it:
 
-Speed is very tied to the task being run, the hardware that the browser is running on and the browser being used.  My intial results are for testing a fibonacci calculation on Chrome on a recent Intel i5 core.
+Speed is very tied to the task being run, the hardware that the browser is running on and the browser being used.  My initial results are for testing a fibonacci calculation on Chrome on a recent Intel i5 core.
 
 Initial Results are:
 
