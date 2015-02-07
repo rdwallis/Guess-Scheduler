@@ -217,7 +217,7 @@ public class GuessScheduler extends SchedulerImpl {
     private static native void scheduleFixedDelayImpl(RepeatingCommand cmd, int delayMs) /*-{
 		    $wnd.setTimeout(function callback() {
 		      // $entry takes care of uncaught exception handling
-		      var ret = $entry(@SchedulerImpl::execute(*))(cmd);
+		      var ret = $entry(@com.wallissoftware.guessscheduler.client.GuessScheduler::execute(*))(cmd);
 		      if (!@com.google.gwt.core.client.GWT::isScript()()) {
 		        // Unwrap from Development Mode
 		        ret = ret == true;
@@ -231,7 +231,7 @@ public class GuessScheduler extends SchedulerImpl {
     private static native void scheduleFixedPeriodImpl(RepeatingCommand cmd, int delayMs) /*-{
 		    var intervalId = $wnd.setInterval(function() {
 		      // $entry takes care of uncaught exception handling
-		      var ret = $entry(@SchedulerImpl::execute(*))(cmd);
+		      var ret = $entry(@com.wallissoftware.guessscheduler.client.GuessScheduler::execute(*))(cmd);
 		      if (!@com.google.gwt.core.client.GWT::isScript()()) {
 		        // Unwrap from Development Mode
 		        ret = ret == true;
