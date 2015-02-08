@@ -25,10 +25,10 @@ public class GuessScheduler extends SchedulerImpl {
         protected Task() {
         }
 
-        public boolean executeRepeating(Duration duration, int goalDuration) {
+        public boolean executeRepeating(Duration duration, double goalDuration) {
             boolean repeat = executeRepeating();
             if (repeat) {
-                int runCount = 1;
+                double runCount = 1;
                 JsArrayNumber avgTimeStack = getRepeatingAvgTimeStack();
                 int elapsedMilli;
                 int guessCount = 0;
@@ -51,8 +51,8 @@ public class GuessScheduler extends SchedulerImpl {
                         runCount += 1;
                     }
                     if (repeat) {
-                        if (runCount > 10) {
-                            avgTimeStack.push(elapsedMilli / (double) runCount);
+                        if (runCount > 4) {
+                            avgTimeStack.push(elapsedMilli / runCount);
                             if (avgTimeStack.length() > 5) {
                                 avgTimeStack.shift();
                             }
@@ -154,7 +154,7 @@ public class GuessScheduler extends SchedulerImpl {
      * IncrementalCommands. 16ms allows control to be returned to the browser 60
      * times a second making it possible to keep the frame rate at 60fps.
      */
-    private static final double TIME_SLICE = 16;
+    private static final double TIME_SLICE = 13;
 
     /**
      * Extract boilerplate code.
@@ -215,33 +215,33 @@ public class GuessScheduler extends SchedulerImpl {
     }
 
     private static native void scheduleFixedDelayImpl(RepeatingCommand cmd, int delayMs) /*-{
-		    $wnd.setTimeout(function callback() {
-		      // $entry takes care of uncaught exception handling
-		      var ret = $entry(@com.wallissoftware.guessscheduler.client.GuessScheduler::execute(*))(cmd);
-		      if (!@com.google.gwt.core.client.GWT::isScript()()) {
-		        // Unwrap from Development Mode
-		        ret = ret == true;
-		      }
-		      if (ret) {
-		        $wnd.setTimeout(callback, delayMs);
-		      }
-		    }, delayMs);
-		  }-*/;
+                                                                                         $wnd.setTimeout(function callback() {
+                                                                                         // $entry takes care of uncaught exception handling
+                                                                                         var ret = $entry(@com.wallissoftware.guessscheduler.client.GuessScheduler::execute(*))(cmd);
+                                                                                         if (!@com.google.gwt.core.client.GWT::isScript()()) {
+                                                                                         // Unwrap from Development Mode
+                                                                                         ret = ret == true;
+                                                                                         }
+                                                                                         if (ret) {
+                                                                                         $wnd.setTimeout(callback, delayMs);
+                                                                                         }
+                                                                                         }, delayMs);
+                                                                                         }-*/;
 
     private static native void scheduleFixedPeriodImpl(RepeatingCommand cmd, int delayMs) /*-{
-		    var intervalId = $wnd.setInterval(function() {
-		      // $entry takes care of uncaught exception handling
-		      var ret = $entry(@com.wallissoftware.guessscheduler.client.GuessScheduler::execute(*))(cmd);
-		      if (!@com.google.gwt.core.client.GWT::isScript()()) {
-		        // Unwrap from Development Mode
-		        ret = ret == true;
-		      }
-		      if (!ret) {
-		        // Either canceled or threw an exception
-		        $wnd.clearInterval(intervalId);
-		      }
-		    }, delayMs);
-		  }-*/;
+                                                                                          var intervalId = $wnd.setInterval(function() {
+                                                                                          // $entry takes care of uncaught exception handling
+                                                                                          var ret = $entry(@com.wallissoftware.guessscheduler.client.GuessScheduler::execute(*))(cmd);
+                                                                                          if (!@com.google.gwt.core.client.GWT::isScript()()) {
+                                                                                          // Unwrap from Development Mode
+                                                                                          ret = ret == true;
+                                                                                          }
+                                                                                          if (!ret) {
+                                                                                          // Either canceled or threw an exception
+                                                                                          $wnd.clearInterval(intervalId);
+                                                                                          }
+                                                                                          }, delayMs);
+                                                                                          }-*/;
 
     /**
      * A RepeatingCommand that calls flushPostEventPumpCommands(). It repeats if
@@ -410,35 +410,11 @@ public class GuessScheduler extends SchedulerImpl {
             return null;
         }
 
-        boolean canceledSomeTasks = false;
         Duration duration = createDuration();
-        int goalDuration = (int) Math.min(7, (TIME_SLICE - 1) / length);
-        if (goalDuration >= 2) {
-            int divisionCount = (int) ((TIME_SLICE - 1) / goalDuration);
-            for (int j = 0; j < divisionCount; j++) {
-                boolean executedSomeTask = false;
-                for (int i = 0; i < length; i++) {
-                    assert tasks.length() == length : "Working array length changed " + tasks.length() + " != " + length;
-                    Task t = tasks.get(i);
-                    if (t == null) {
-                        continue;
-                    }
-                    executedSomeTask = true;
+        boolean canceledSomeTasks = false;
+        if (length < 8) {
+            double goalDuration = TIME_SLICE / length;
 
-                    assert t.isRepeating() : "Found a non-repeating Task";
-
-                    if (!t.executeRepeating(duration, goalDuration * (j + 1))) {
-                        tasks.set(i, null);
-                        canceledSomeTasks = true;
-                    }
-                    if (!executedSomeTask) {
-                        break;
-                    }
-                }
-            }
-        }
-
-        while (duration.elapsedMillis() < TIME_SLICE) {
             boolean executedSomeTask = false;
             for (int i = 0; i < length; i++) {
                 assert tasks.length() == length : "Working array length changed " + tasks.length() + " != " + length;
@@ -450,15 +426,39 @@ public class GuessScheduler extends SchedulerImpl {
 
                 assert t.isRepeating() : "Found a non-repeating Task";
 
-                if (!t.executeRepeating()) {
+                if (!t.executeRepeating(duration, goalDuration * (i + 1))) {
                     tasks.set(i, null);
                     canceledSomeTasks = true;
                 }
+                if (!executedSomeTask) {
+                    break;
+                }
             }
-            if (!executedSomeTask) {
-                // no work left to do, break to avoid busy waiting until
-                // TIME_SLICE is reached
-                break;
+
+        } else {
+
+            while (duration.elapsedMillis() < TIME_SLICE) {
+                boolean executedSomeTask = false;
+                for (int i = 0; i < length; i++) {
+                    assert tasks.length() == length : "Working array length changed " + tasks.length() + " != " + length;
+                    Task t = tasks.get(i);
+                    if (t == null) {
+                        continue;
+                    }
+                    executedSomeTask = true;
+
+                    assert t.isRepeating() : "Found a non-repeating Task";
+
+                    if (!t.executeRepeating()) {
+                        tasks.set(i, null);
+                        canceledSomeTasks = true;
+                    }
+                }
+                if (!executedSomeTask) {
+                    // no work left to do, break to avoid busy waiting until
+                    // TIME_SLICE is reached
+                    break;
+                }
             }
         }
 
