@@ -15,29 +15,29 @@ public class GuessScheduler extends SchedulerImpl {
      */
     static final class Task extends JavaScriptObject {
         public static native Task create(RepeatingCommand cmd) /*-{
-			return [ cmd, true, [] ];
+            return [ cmd, true, []];
         }-*/;
 
         public static native Task create(ScheduledCommand cmd) /*-{
-			return [ cmd, false ];
+            return [ cmd, false ];
         }-*/;
 
         protected Task() {
         }
 
-        public boolean executeRepeating(Duration duration, double goalDuration) {
+        public int executeRepeating(Duration duration, double goalDuration, int startMilli) {
             boolean repeat = executeRepeating();
+            int elapsedMilli = 0;
             if (repeat) {
                 double runCount = 1;
                 JsArrayNumber avgTimeStack = getRepeatingAvgTimeStack();
-                int elapsedMilli;
                 int guessCount = 0;
                 if (avgTimeStack.length() > 0) {
                     double maxAvg = avgTimeStack.get(0);
                     for (int i = 1; i < avgTimeStack.length(); i++) {
                         maxAvg = Math.max(maxAvg, avgTimeStack.get(i));
                     }
-                    guessCount = (int) (goalDuration / maxAvg);
+                    guessCount = (int) ((goalDuration - startMilli) / maxAvg);
                 }
                 while (repeat && guessCount-- > 0) {
                     repeat = executeRepeating();
@@ -52,8 +52,8 @@ public class GuessScheduler extends SchedulerImpl {
                     }
                     if (repeat) {
                         if (runCount > 4) {
-                            avgTimeStack.push(elapsedMilli / runCount);
-                            if (avgTimeStack.length() > 5) {
+                            avgTimeStack.push((elapsedMilli - startMilli) / runCount);
+                            if (avgTimeStack.length() > 3) {
                                 avgTimeStack.shift();
                             }
                         } else {
@@ -63,7 +63,7 @@ public class GuessScheduler extends SchedulerImpl {
                 }
 
             }
-            return repeat;
+            return repeat ? elapsedMilli: -1;
         }
 
         public boolean executeRepeating() {
@@ -71,7 +71,7 @@ public class GuessScheduler extends SchedulerImpl {
         }
 
         private native JsArrayNumber getRepeatingAvgTimeStack() /*-{
-			return this[2];
+            return this[2];
         }-*/;
 
         public void executeScheduled() {
@@ -82,18 +82,18 @@ public class GuessScheduler extends SchedulerImpl {
          * Has implicit cast.
          */
         public native RepeatingCommand getRepeating() /*-{
-			return this[0];
+            return this[0];
         }-*/;
 
         /**
          * Has implicit cast.
          */
         public native ScheduledCommand getScheduled() /*-{
-			return this[0];
+            return this[0];
         }-*/;
 
         public native boolean isRepeating() /*-{
-			return this[1];
+            return this[1];
         }-*/;
     }
 
@@ -412,29 +412,21 @@ public class GuessScheduler extends SchedulerImpl {
 
         Duration duration = createDuration();
         boolean canceledSomeTasks = false;
-        if (length < 8) {
-            double goalDuration = TIME_SLICE / length;
-
-            boolean executedSomeTask = false;
+        if (length < 7) {
+            double goalDuration = TIME_SLICE / (double) length;
+            int elapsedMilli = 0;
             for (int i = 0; i < length; i++) {
                 assert tasks.length() == length : "Working array length changed " + tasks.length() + " != " + length;
                 Task t = tasks.get(i);
-                if (t == null) {
-                    continue;
-                }
-                executedSomeTask = true;
 
                 assert t.isRepeating() : "Found a non-repeating Task";
 
-                if (!t.executeRepeating(duration, goalDuration * (i + 1))) {
+                elapsedMilli = t.executeRepeating(duration, goalDuration* (i+ 1), elapsedMilli);
+                if (elapsedMilli < 0) {
                     tasks.set(i, null);
                     canceledSomeTasks = true;
                 }
-                if (!executedSomeTask) {
-                    break;
-                }
             }
-
         } else {
 
             while (duration.elapsedMillis() < TIME_SLICE) {
@@ -476,4 +468,5 @@ public class GuessScheduler extends SchedulerImpl {
             return tasks;
         }
     }
+
 }
